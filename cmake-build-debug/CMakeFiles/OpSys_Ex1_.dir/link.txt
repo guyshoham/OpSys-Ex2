@@ -1,1 +1,0 @@
-/usr/bin/cc -g   CMakeFiles/OpSys_Ex1_.dir/main.c.o  -o OpSys_Ex1_ 

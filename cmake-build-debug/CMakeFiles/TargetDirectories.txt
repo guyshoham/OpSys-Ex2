@@ -1,3 +1,0 @@
-/home/guy/CLionProjects/OpSys-Ex1 /cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/home/guy/CLionProjects/OpSys-Ex1 /cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/guy/CLionProjects/OpSys-Ex1 /cmake-build-debug/CMakeFiles/OpSys_Ex1_.dir
