@@ -10,6 +10,7 @@ void backgroundCommand();
 void foregroundCommand();
 void splitCommand();
 void scan();
+bool argumentsValidation();
 
 char* argv[10];
 int argc;
@@ -24,14 +25,17 @@ int main() {
 
       // split the input
       splitCommand();
-
-      //make the command (foreground or background)
-      if (isBackground()) {
-        // if background, remove '&' from argv
-        argv[argc - 1] = NULL;
-        backgroundCommand(argv);
+      if (!argumentsValidation()) {
+        printf("Error: Too many arguments\n");
       } else {
-        foregroundCommand(argv);
+        //make the command (foreground or background)
+        if (isBackground()) {
+          // if background, remove '&' from argv
+          argv[argc - 1] = NULL;
+          backgroundCommand(argv);
+        } else {
+          foregroundCommand(argv);
+        }
       }
 
     }// end of empty string check
@@ -94,4 +98,17 @@ void backgroundCommand() {
       printf("exec failed\n");
     }
   }
+}
+bool argumentsValidation() {
+
+  int argCounter = 0;
+
+  for (int i = 1; argv[i] != NULL; ++i) {
+    //printf("%c\n", argv[i][0]);
+    if (argv[i][0] != '-' && argv[i][0] != '&') {
+      argCounter++;
+    }
+  }
+
+  return argCounter > 1 ? false : true;
 }
