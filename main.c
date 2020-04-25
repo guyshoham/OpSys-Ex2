@@ -9,6 +9,7 @@ bool isBackground();
 void backgroundCommand();
 void foregroundCommand();
 void splitCommand();
+void scan();
 
 char* argv[10];
 int argc;
@@ -16,10 +17,8 @@ char command[100];
 
 int main() {
 
-  ///scan command input
-  printf("> ");
-  gets(command);
-  while (strcmp(command, "exit")) {
+  scan();
+  while (strcmp(command, "exit") != 0) {
 
     if (strlen(command) > 0) {
 
@@ -37,12 +36,15 @@ int main() {
 
     }// end of empty string check
 
-    ///scan another command input
-    printf("> ");
-    gets(command);
+    scan();
   }
 
   return 0;
+}
+void scan() {
+  ///scan command input
+  printf("> ");
+  gets(command);
 }
 void splitCommand() {
   argc = 0;
@@ -54,6 +56,9 @@ void splitCommand() {
     token = strtok(NULL, " ");
   }
   argv[argc] = NULL;
+}
+bool isBackground() {
+  return strcmp(argv[argc - 1], "&") == 0 ? true : false;
 }
 void foregroundCommand() {
   pid_t val;
@@ -90,7 +95,3 @@ void backgroundCommand() {
     }
   }
 }
-bool isBackground() {
-  return strcmp(argv[argc - 1], "&") == 0 ? true : false;
-}
-
