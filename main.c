@@ -1,22 +1,31 @@
+#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
-#include <unistd.h>
 #include <sys/wait.h>
-#include <stdbool.h>
+#include <unistd.h>
+#include <limits.h>
 
 bool isBackground();
 void backgroundCommand();
 void foregroundCommand();
 void splitCommand();
 void scan();
+void cd();
 bool argumentsValidation();
+void swapPointers(char** str1_ptr, char** str2_ptr);
 
 char* argv[10];
 int argc;
-char command[100];
+char command[101];
+char cwdCurr[PATH_MAX], cwdPrev[PATH_MAX];
+char* currentPwd, * prevPwd;
+char* home = "/home/";
 
 int main() {
+  currentPwd = getcwd(cwdCurr, sizeof(cwdCurr));
+  prevPwd = getcwd(cwdPrev, sizeof(cwdPrev));
 
   scan();
   while (strcmp(command, "exit") != 0) {
@@ -74,10 +83,15 @@ void foregroundCommand() {
   val = fork();
   if (val == 0) { ///child process
     printf("%d\n", (int) getpid());
-    status = execvp(argv[0], argv);
-    if (status == -1) {
-      fprintf(stderr, "Error in system call\n");
-      exit(1);
+
+    if (strcmp(argv[0], "cd") == 0) { // cd command
+      cd();
+    } else {
+      status = execvp(argv[0], argv);
+      if (status == -1) {
+        fprintf(stderr, "Error in system call\n");
+        exit(1);
+      }
     }
   } else if (val > 0) { ///parent process
     wait(&status);
@@ -112,4 +126,41 @@ bool argumentsValidation() {
   }
 
   return argCounter > 1 ? false : true;
+}
+void cd() {
+  int status;
+
+  if (argv[1] == NULL || strcmp(argv[1], "~") == 0) {
+    //TODO: implement cd ~
+    printf("TODO: cd ~ command\n");
+  } else if (strcmp(argv[1], "-") == 0) {
+    status = chdir(prevPwd);
+    if (status == -1) {
+      fprintf(stderr, "Error: No such file or directory\n");
+      exit(1);
+    } else {
+      swapPointers(&currentPwd, &prevPwd);
+    }
+  } else {
+    printf("not cd ~ command\n");
+    char* temp = (char*) malloc((strlen(prevPwd) + 1) * sizeof(char));
+    strcpy(temp, prevPwd);
+    prevPwd = getcwd(cwdPrev, sizeof(cwdPrev));
+
+    status = chdir(argv[1]);
+    if (status == -1) {
+      fprintf(stderr, "Error: No such file or directory\n");
+      strcpy(prevPwd, temp);
+      free(temp);
+      exit(1);
+    } else {
+      currentPwd = getcwd(cwdCurr, sizeof(cwdCurr));
+      free(temp);
+    }
+  }
+}
+void swapPointers(char** str1_ptr, char** str2_ptr) {
+  char* temp = *str1_ptr;
+  *str1_ptr = *str2_ptr;
+  *str2_ptr = temp;
 }
