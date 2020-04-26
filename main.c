@@ -26,7 +26,7 @@ int main() {
       // split the input
       splitCommand();
       if (!argumentsValidation()) {
-        printf("Error: Too many arguments\n");
+        fprintf(stderr, "Error: Too many arguments\n");
       } else {
         //make the command (foreground or background)
         if (isBackground()) {
@@ -66,10 +66,9 @@ bool isBackground() {
 }
 void foregroundCommand() {
   pid_t val;
-  int stat;
   int status;
 
-  printf("Foreground\n"); //TODO: delete line before submit
+  //printf("Foreground\n"); //TODO: delete line before submit
 
   //forking, child process will execvp and parent will wait
   val = fork();
@@ -77,17 +76,18 @@ void foregroundCommand() {
     printf("%d\n", (int) getpid());
     status = execvp(argv[0], argv);
     if (status == -1) {
-      printf("exec failed\n");
+      fprintf(stderr, "Error in system call\n");
+      exit(1);
     }
   } else if (val > 0) { ///parent process
-    wait(&stat);
+    wait(&status);
   }
 }
 void backgroundCommand() {
   pid_t val;
   int status;
 
-  printf("Background\n"); //TODO: delete line before submit
+  //printf("Background\n"); //TODO: delete line before submit
 
   //forking, child process will execvp, parent won't wait
   val = fork();
@@ -95,7 +95,8 @@ void backgroundCommand() {
     printf("%d\n", (int) getpid());
     status = execvp(argv[0], argv);
     if (status == -1) {
-      printf("exec failed\n");
+      fprintf(stderr, "Error in system call\n");
+      exit(1);
     }
   }
 }
