@@ -16,6 +16,7 @@ void cd();
 bool argumentsValidation();
 char* getTilda();
 void printPwd();
+char* replaceAll(const char* s, const char* oldStr, const char* newStr);
 
 char command[101], cwdCurr[PATH_MAX], cwdPrev[PATH_MAX];
 char* argv[10], * currentPwd, * prevPwd, * homePwd;
@@ -23,6 +24,7 @@ int argc;
 pid_t* children[100];
 int childrenCount = 0;
 char** commands[100];
+bool isChild = false;
 
 int main() {
   currentPwd = getcwd(cwdCurr, sizeof(cwdCurr));
@@ -30,7 +32,7 @@ int main() {
   homePwd = getTilda();
 
   scan();
-  while (strcmp(command, "exit") != 0) {
+  while (strcmp(command, "exit")) {
 
     if (strlen(command) > 0) {
 
@@ -54,6 +56,9 @@ int main() {
           foregroundCommand();
         }
       }
+
+      // terminate child processes that reach here after executing command
+      if (isChild) { return 0; }
 
     }// end of empty string check
 
@@ -87,21 +92,23 @@ void foregroundCommand() {
 
   //forking, child process will execvp and parent will wait
   val = fork();
-  if (val == 0) { ///child process
+  if (val == 0) { //child process
+    isChild = true;
     if (!strcmp(argv[0], "cd")) { // cd command
       printf("%d\n", (int) getpid());
       cd();
     } else if (!strcmp(argv[0], "jobs")) {
-      for (int i = 0; i < childrenCount; ++i) {
+      int i;
+      for (i = 0; i < childrenCount; ++i) {
         if (kill(children[i], 0) == 0) {
           printf("%d %s\n", children[i], commands[i]);
         }
       }
-      _exit(1);
     } else if (!strcmp(argv[0], "history")) {
       children[childrenCount] = getpid();
       childrenCount++;
-      for (int i = 0; i < childrenCount; ++i) {
+      int i;
+      for (i = 0; i < childrenCount; ++i) {
         printf("%d %s ", children[i], commands[i]);
         if (kill(children[i], 0) == 0) {
           printf("RUNNING\n");
@@ -109,16 +116,14 @@ void foregroundCommand() {
           printf("DONE\n");
         }
       }
-      _exit(1);
     } else {
       printf("%d\n", (int) getpid());
       status = execvp(argv[0], argv);
       if (status == -1) {
         fprintf(stderr, "Error in system call\n");
-        _exit(1);
       }
     }
-  } else if (val > 0) { ///parent process
+  } else if (val > 0) { //parent process
     wait(&status);
     children[childrenCount] = val;
     childrenCount++;
@@ -130,23 +135,23 @@ void backgroundCommand() {
 
   //forking, child process will execvp, parent won't wait
   val = fork();
-  if (val == 0) { ///child process
+  if (val == 0) { //child process
+    isChild = true;
     printf("%d\n", (int) getpid());
     status = execvp(argv[0], argv);
     if (status == -1) {
       fprintf(stderr, "Error in system call\n");
-      _exit(1);
     }
-  } else if (val > 0) { ///parent process
+  } else if (val > 0) { //parent process
     children[childrenCount] = val;
     childrenCount++;
   }
 }
 bool argumentsValidation() {
 
-  int argCounter = 0;
+  int argCounter = 0, i;
 
-  for (int i = 1; argv[i] != NULL; ++i) {
+  for (i = 1; argv[i] != NULL; ++i) {
     //printf("%c\n", argv[i][0]);
     if (argv[i][0] != '-' && argv[i][0] != '&') {
       argCounter++;
@@ -167,7 +172,6 @@ void cd() {
       fprintf(stderr, "Error: No such file or directory\n");
       strcpy(prevPwd, tempPwd);
       free(tempPwd);
-      _exit(1);
     } else {
       currentPwd = getcwd(cwdCurr, sizeof(cwdCurr));
     }
@@ -177,23 +181,23 @@ void cd() {
       fprintf(stderr, "Error: No such file or directory\n");
       strcpy(prevPwd, tempPwd);
       free(tempPwd);
-      _exit(1);
     } else {
       currentPwd = getcwd(cwdCurr, sizeof(cwdCurr));
       //swapPointers(&currentPwd, &prevPwd);
     }
   } else {
+    argv[1] = replaceAll(argv[1], "~", homePwd);
     status = chdir(argv[1]);
     if (status == -1) {
       fprintf(stderr, "Error: No such file or directory\n");
       strcpy(prevPwd, tempPwd);
       free(tempPwd);
-      _exit(1);
     } else {
       currentPwd = getcwd(cwdCurr, sizeof(cwdCurr));
     }
+    free(argv[1]);
   }
-  printPwd();
+  //printPwd();
   free(tempPwd);
 }
 char* getTilda() {
@@ -206,8 +210,37 @@ char* getTilda() {
 
   return tokenHome;
 }
-void printPwd() {
-  printf("%s >> %s\n", prevPwd, currentPwd);
-  //printf("prevPwd: %s\n",prevPwd);
-  printf("\n");
+void printPwd() { printf("%s >> %s\n\n", prevPwd, currentPwd); }
+char* replaceAll(const char* s, const char* oldStr, const char* newStr) {
+  char* result;
+  int i, count = 0;
+  int oldStrlen = strlen(oldStr);
+  int newStrlen = strlen(newStr);
+
+  // Counting the number of times old word occur in the string
+  for (i = 0; s[i] != '\0'; i++) {
+    if (strstr(&s[i], oldStr) == &s[i]) {
+      count++;
+
+      // Jumping to index after the old word.
+      i += oldStrlen - 1;
+    }
+  }
+
+  // Making new string of enough length
+  result = (char*) malloc(i + count * (newStrlen - oldStrlen) + 1);
+
+  i = 0;
+  while (*s) {
+    // compare the substring with the result
+    if (strstr(s, oldStr) == s) {
+      strcpy(&result[i], newStr);
+      i += newStrlen;
+      s += oldStrlen;
+    } else
+      result[i++] = *s++;
+  }
+
+  result[i] = '\0';
+  return result;
 }
