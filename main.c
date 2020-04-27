@@ -14,16 +14,15 @@ void splitCommand();
 void scan();
 void cd();
 bool argumentsValidation();
-void swapPointers(char** str1_ptr, char** str2_ptr);
 char* getTilda();
 void printPwd();
 
-char* argv[10];
+char command[101], cwdCurr[PATH_MAX], cwdPrev[PATH_MAX];
+char* argv[10], * currentPwd, * prevPwd, * homePwd;
 int argc;
-char command[101];
-char cwdCurr[PATH_MAX], cwdPrev[PATH_MAX];
-char* currentPwd, * prevPwd;
-char* homePwd;
+pid_t* children[100];
+int childrenCount = 0;
+char** commands[100];
 
 int main() {
   currentPwd = getcwd(cwdCurr, sizeof(cwdCurr));
@@ -35,6 +34,12 @@ int main() {
 
     if (strlen(command) > 0) {
 
+      //save command to history, before the split (save with all flags)
+      char* cmdPtr;
+      cmdPtr = (char*) malloc((strlen(command) + 1) * sizeof(char));
+      strcpy(cmdPtr, command);
+      commands[childrenCount] = cmdPtr;
+
       // split the input
       splitCommand();
       if (!argumentsValidation()) {
@@ -44,9 +49,9 @@ int main() {
         if (isBackground()) {
           // if background, remove '&' from argv
           argv[argc - 1] = NULL;
-          backgroundCommand(argv);
+          backgroundCommand();
         } else {
-          foregroundCommand(argv);
+          foregroundCommand();
         }
       }
 
@@ -80,31 +85,48 @@ void foregroundCommand() {
   pid_t val;
   int status;
 
-  //printf("Foreground\n"); //TODO: delete line before submit
-
   //forking, child process will execvp and parent will wait
   val = fork();
   if (val == 0) { ///child process
-    printf("%d\n", (int) getpid());
-
-    if (strcmp(argv[0], "cd") == 0) { // cd command
+    if (!strcmp(argv[0], "cd")) { // cd command
+      printf("%d\n", (int) getpid());
       cd();
+    } else if (!strcmp(argv[0], "jobs")) {
+      for (int i = 0; i < childrenCount; ++i) {
+        if (kill(children[i], 0) == 0) {
+          printf("%d %s\n", children[i], commands[i]);
+        }
+      }
+      _exit(1);
+    } else if (!strcmp(argv[0], "history")) {
+      children[childrenCount] = getpid();
+      childrenCount++;
+      for (int i = 0; i < childrenCount; ++i) {
+        printf("%d %s ", children[i], commands[i]);
+        if (kill(children[i], 0) == 0) {
+          printf("RUNNING\n");
+        } else {
+          printf("DONE\n");
+        }
+      }
+      _exit(1);
     } else {
+      printf("%d\n", (int) getpid());
       status = execvp(argv[0], argv);
       if (status == -1) {
         fprintf(stderr, "Error in system call\n");
-        exit(1);
+        _exit(1);
       }
     }
   } else if (val > 0) { ///parent process
     wait(&status);
+    children[childrenCount] = val;
+    childrenCount++;
   }
 }
 void backgroundCommand() {
   pid_t val;
   int status;
-
-  //printf("Background\n"); //TODO: delete line before submit
 
   //forking, child process will execvp, parent won't wait
   val = fork();
@@ -113,8 +135,11 @@ void backgroundCommand() {
     status = execvp(argv[0], argv);
     if (status == -1) {
       fprintf(stderr, "Error in system call\n");
-      exit(1);
+      _exit(1);
     }
+  } else if (val > 0) { ///parent process
+    children[childrenCount] = val;
+    childrenCount++;
   }
 }
 bool argumentsValidation() {
@@ -142,7 +167,7 @@ void cd() {
       fprintf(stderr, "Error: No such file or directory\n");
       strcpy(prevPwd, tempPwd);
       free(tempPwd);
-      exit(1);
+      _exit(1);
     } else {
       currentPwd = getcwd(cwdCurr, sizeof(cwdCurr));
     }
@@ -152,7 +177,7 @@ void cd() {
       fprintf(stderr, "Error: No such file or directory\n");
       strcpy(prevPwd, tempPwd);
       free(tempPwd);
-      exit(1);
+      _exit(1);
     } else {
       currentPwd = getcwd(cwdCurr, sizeof(cwdCurr));
       //swapPointers(&currentPwd, &prevPwd);
@@ -163,18 +188,13 @@ void cd() {
       fprintf(stderr, "Error: No such file or directory\n");
       strcpy(prevPwd, tempPwd);
       free(tempPwd);
-      exit(1);
+      _exit(1);
     } else {
       currentPwd = getcwd(cwdCurr, sizeof(cwdCurr));
     }
   }
   printPwd();
   free(tempPwd);
-}
-void swapPointers(char** str1_ptr, char** str2_ptr) {
-  char* temp = *str1_ptr;
-  *str1_ptr = *str2_ptr;
-  *str2_ptr = temp;
 }
 char* getTilda() {
   char cwd[PATH_MAX];
