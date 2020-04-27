@@ -14,6 +14,8 @@ void foregroundCommand();
 void splitCommand();
 void scan();
 void cd();
+void jobs();
+void history();
 bool argumentsValidation();
 char* getTilda();
 char* replaceAll(const char* s, const char* oldStr, const char* newStr);
@@ -21,12 +23,14 @@ char* replaceAll(const char* s, const char* oldStr, const char* newStr);
 char command[101], cwdCurr[PATH_MAX], cwdPrev[PATH_MAX];
 char* argv[10], * currentPwd, * prevPwd, * homePwd;
 int argc;
-pid_t* children[100];
-int childrenCount = 0;
+pid_t pids[100];
+pid_t parentPid;
+int pidCount = 0;
 char** commands[100];
 bool isChild = false;
 
 int main() {
+  parentPid = getpid();
   currentPwd = getcwd(cwdCurr, sizeof(cwdCurr));
   prevPwd = getcwd(cwdPrev, sizeof(cwdPrev));
   homePwd = getTilda();
@@ -40,7 +44,7 @@ int main() {
       char* cmdPtr;
       cmdPtr = (char*) malloc((strlen(command) + 1) * sizeof(char));
       strcpy(cmdPtr, command);
-      commands[childrenCount] = cmdPtr;
+      commands[pidCount] = cmdPtr;
 
       // split the input
       splitCommand();
@@ -49,10 +53,10 @@ int main() {
       } else {
         //check cd command
         if (!strcmp(argv[0], "cd")) { // cd command
-          printf("%d\n", (int) getpid());
+          printf("%d\n", parentPid);
           cd();
-          children[childrenCount] = getpid();
-          childrenCount++;
+          pids[pidCount] = parentPid;
+          pidCount++;
         }
           //check foreground or background command
         else if (isBackground()) {
@@ -101,27 +105,10 @@ void foregroundCommand() {
   val = fork();
   if (val == 0) { //child process
     isChild = true;
-    if (!strcmp(argv[0], "jobs")) {
-      int i;
-      for (i = 0; i < childrenCount; ++i) {
-        if (kill(children[i], 0) == 0) {
-          printf("%d %s\n", children[i], commands[i]);
-        }
-      }
-    } else if (!strcmp(argv[0], "history")) {
-      children[childrenCount] = getpid();
-      childrenCount++;
-      int i;
-      for (i = 0; i < childrenCount; ++i) {
-        printf("%d %s ", children[i], commands[i]);
-        if (kill(children[i], 0) == 0) {
-          printf("RUNNING\n");
-        } else {
-          printf("DONE\n");
-        }
-      }
-    } else {
-      printf("%d\n", (int) getpid());
+    if (!strcmp(argv[0], "jobs")) { jobs(); }
+    else if (!strcmp(argv[0], "history")) { history(); }
+    else {
+      printf("%d\n", getpid());
       status = execvp(argv[0], argv);
       if (status == -1) {
         fprintf(stderr, "Error in system call\n");
@@ -129,8 +116,8 @@ void foregroundCommand() {
     }
   } else if (val > 0) { //parent process
     wait(&status);
-    children[childrenCount] = val;
-    childrenCount++;
+    pids[pidCount] = val;
+    pidCount++;
   }
 }
 void backgroundCommand() {
@@ -141,14 +128,14 @@ void backgroundCommand() {
   val = fork();
   if (val == 0) { //child process
     isChild = true;
-    printf("%d\n", (int) getpid());
+    printf("%d\n", getpid());
     status = execvp(argv[0], argv);
     if (status == -1) {
       fprintf(stderr, "Error in system call\n");
     }
   } else if (val > 0) { //parent process
-    children[childrenCount] = val;
-    childrenCount++;
+    pids[pidCount] = val;
+    pidCount++;
   }
 }
 bool argumentsValidation() {
@@ -236,4 +223,25 @@ char* replaceAll(const char* s, const char* oldStr, const char* newStr) {
 
   result[i] = '\0';
   return result;
+}
+void jobs() {
+  int i;
+  for (i = 0; i < pidCount; ++i) {
+    if (kill(pids[i], 0) == 0 && pids[i] != parentPid) {
+      printf("%d %s\n", pids[i], commands[i]);
+    }
+  }
+}
+void history() {
+  pids[pidCount] = getpid();
+  pidCount++;
+  int i;
+  for (i = 0; i < pidCount; ++i) {
+    printf("%d %s ", pids[i], commands[i]);
+    if (kill(pids[i], 0) != 0 || pids[i] == parentPid) {
+      printf("DONE\n");
+    } else {
+      printf("RUNNING\n");
+    }
+  }
 }
