@@ -47,8 +47,15 @@ int main() {
       if (!argumentsValidation()) {
         fprintf(stderr, "Error: Too many arguments\n");
       } else {
-        //make the command (foreground or background)
-        if (isBackground()) {
+        //check cd command
+        if (!strcmp(argv[0], "cd")) { // cd command
+          printf("%d\n", (int) getpid());
+          cd();
+          children[childrenCount] = getpid();
+          childrenCount++;
+        }
+          //check foreground or background command
+        else if (isBackground()) {
           // if background, remove '&' from argv
           argv[argc - 1] = NULL;
           backgroundCommand();
@@ -94,10 +101,7 @@ void foregroundCommand() {
   val = fork();
   if (val == 0) { //child process
     isChild = true;
-    if (!strcmp(argv[0], "cd")) { // cd command
-      printf("%d\n", (int) getpid());
-      cd();
-    } else if (!strcmp(argv[0], "jobs")) {
+    if (!strcmp(argv[0], "jobs")) {
       int i;
       for (i = 0; i < childrenCount; ++i) {
         if (kill(children[i], 0) == 0) {
