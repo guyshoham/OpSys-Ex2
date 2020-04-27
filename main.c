@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <limits.h>
+#include <pwd.h>
 
 bool isBackground();
 void backgroundCommand();
@@ -15,7 +16,6 @@ void scan();
 void cd();
 bool argumentsValidation();
 char* getTilda();
-void printPwd();
 char* replaceAll(const char* s, const char* oldStr, const char* newStr);
 
 char command[101], cwdCurr[PATH_MAX], cwdPrev[PATH_MAX];
@@ -197,20 +197,9 @@ void cd() {
     }
     free(argv[1]);
   }
-  //printPwd();
   free(tempPwd);
 }
-char* getTilda() {
-  char cwd[PATH_MAX];
-  char* tempPwd;
-
-  tempPwd = getcwd(cwd, sizeof(cwd));
-  char* tokenHome = strtok(tempPwd, "");
-  char* tmp = strtok(tempPwd, "/home/");
-
-  return tokenHome;
-}
-void printPwd() { printf("%s >> %s\n\n", prevPwd, currentPwd); }
+char* getTilda() { return getpwuid(getuid())->pw_dir; }
 char* replaceAll(const char* s, const char* oldStr, const char* newStr) {
   char* result;
   int i, count = 0;
