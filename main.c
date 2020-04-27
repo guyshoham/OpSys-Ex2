@@ -36,10 +36,9 @@ int main() {
   homePwd = getTilda();
 
   scan();
-  while (strcmp(command, "exit")) {
+  while (true) {
 
     if (strlen(command) > 0) {
-
       //save command to history, before the split (save with all flags)
       char* cmdPtr;
       cmdPtr = (char*) malloc((strlen(command) + 1) * sizeof(char));
@@ -51,6 +50,12 @@ int main() {
       if (!argumentsValidation()) {
         fprintf(stderr, "Error: Too many arguments\n");
       } else {
+        //check exit command
+        if (!strcmp(argv[0], "exit")) { // cd command
+          printf("%d\n", parentPid);
+          exit(0);
+        }
+
         //check cd command
         if (!strcmp(argv[0], "cd")) { // cd command
           printf("%d\n", parentPid);
