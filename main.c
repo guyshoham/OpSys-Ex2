@@ -47,30 +47,26 @@ int main() {
 
       // split the input
       splitCommand();
-      if (!argumentsValidation()) {
-        fprintf(stderr, "Error: Too many arguments\n");
-      } else {
-        //check exit command
-        if (!strcmp(argv[0], "exit")) { // cd command
-          printf("%d\n", parentPid);
-          exit(0);
-        }
+      //check exit command
+      if (!strcmp(argv[0], "exit")) { // cd command
+        printf("%d\n", parentPid);
+        exit(0);
+      }
 
-        //check cd command
-        if (!strcmp(argv[0], "cd")) { // cd command
-          printf("%d\n", parentPid);
-          cd();
-          pids[pidCount] = parentPid;
-          pidCount++;
-        }
-          //check foreground or background command
-        else if (isBackground()) {
-          // if background, remove '&' from argv
-          argv[argc - 1] = NULL;
-          backgroundCommand();
-        } else {
-          foregroundCommand();
-        }
+      //check cd command
+      if (!strcmp(argv[0], "cd")) { // cd command
+        printf("%d\n", parentPid);
+        cd();
+        pids[pidCount] = parentPid;
+        pidCount++;
+      }
+        //check foreground or background command
+      else if (isBackground()) {
+        // if background, remove '&' from argv
+        argv[argc - 1] = NULL;
+        backgroundCommand();
+      } else {
+        foregroundCommand();
       }
 
       // terminate child processes that reach here after executing command
@@ -90,13 +86,47 @@ void scan() {
 }
 void splitCommand() {
   argc = 0;
+  bool isEcho = false, hasQuotes = false;
+  int quotesPos = 0;
   char* token = strtok(command, " ");
 
   while (token != NULL) {
     argv[argc] = token;
+
+    //check if command is echo
+    if (argc == 0) {
+      if (strcmp(argv[0], "echo") == 0) {
+        isEcho = true;
+      }
+    }
+
+    //if echo, check if first arg has opening quotes
+    if (isEcho && argc == 1) {
+      if (argv[1][0] == '\"') {
+        hasQuotes = true;
+        quotesPos = argc;
+        //remove opening quotes
+        argv[1]++;
+      }
+    }
+
     argc++;
     token = strtok(NULL, " ");
-  }
+  } //end of while token != NULL
+
+  // if we removed the opening quotes, we shall find the ending quotes and remove them as well
+  if (hasQuotes) {
+    //remove ending quotes
+    int w = 0;
+    while (hasQuotes) {
+      if (argv[quotesPos + w][strlen(argv[quotesPos + w]) - 1] == '\"') {
+        argv[quotesPos + w][strlen(argv[quotesPos + w]) - 1] = 0;
+        hasQuotes = false;
+      }
+      w++;
+    }// end of while
+  } //end of if hasQuotes
+
   argv[argc] = NULL;
 }
 bool isBackground() {
@@ -148,7 +178,6 @@ bool argumentsValidation() {
   int argCounter = 0, i;
 
   for (i = 1; argv[i] != NULL; ++i) {
-    //printf("%c\n", argv[i][0]);
     if (argv[i][0] != '-' && argv[i][0] != '&') {
       argCounter++;
     }
@@ -157,6 +186,12 @@ bool argumentsValidation() {
   return argCounter > 1 ? false : true;
 }
 void cd() {
+
+  if (!argumentsValidation()) {
+    fprintf(stderr, "Error: Too many arguments\n");
+    return;
+  }
+
   int status;
   char* tempPwd = (char*) malloc((strlen(prevPwd) + 1) * sizeof(char));
   strcpy(tempPwd, prevPwd);
