@@ -187,6 +187,7 @@ bool argumentsValidation() {
 }
 void cd() {
 
+  //check number of arguments first
   if (!argumentsValidation()) {
     fprintf(stderr, "Error: Too many arguments\n");
     return;
@@ -197,6 +198,7 @@ void cd() {
   strcpy(tempPwd, prevPwd);
   prevPwd = getcwd(cwdPrev, sizeof(cwdPrev));
 
+  //check if command is "cd" or "cd ~"
   if (argv[1] == NULL || strcmp(argv[1], "~") == 0) {
     status = chdir(homePwd);
     if (status == -1) {
@@ -206,6 +208,7 @@ void cd() {
     } else {
       currentPwd = getcwd(cwdCurr, sizeof(cwdCurr));
     }
+    //check if command is "cd -"
   } else if (strcmp(argv[1], "-") == 0) {
     status = chdir(tempPwd);
     if (status == -1) {
@@ -214,9 +217,9 @@ void cd() {
       free(tempPwd);
     } else {
       currentPwd = getcwd(cwdCurr, sizeof(cwdCurr));
-      //swapPointers(&currentPwd, &prevPwd);
     }
   } else {
+    // if there is ~ in path, replace it with home directory
     argv[1] = replaceAll(argv[1], "~", homePwd);
     status = chdir(argv[1]);
     if (status == -1) {
